@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>WebShell</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div id="terminal"></div>
+    <form id="shell-form">
+        <span>$</span>
+        <input type="text" id="command" autocomplete="off" autofocus />
+    </form>
+
+    <script>
+        const form = document.getElementById('shell-form');
+        const terminal = document.getElementById('terminal');
+        const input = document.getElementById('command');
+
+        let history= [];
+        let historyIndex= -1;
+
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            const cmd = input.value.trim();
+            if(!cmd)    return;
+
+            terminal.innerHTML += `<div><span>$ </span>${cmd}</div>`;
+            history.push(cmd);
+            historyIndex= history.length;
+            input.value = '';
+
+            const res = await fetch('/command', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ command: cmd })
+            });
+
+            const data = await res.json();
+            if (data.redirect) {
+                window.location.href = data.redirect;
+            } else if (data.output) {
+                if(data.output=== "__CLEAR__")   {
+                    terminal.innerHTML= "";
+                }   else    {
+                    terminal.innerHTML += `<pre>${data.output}</pre>`;
+                }
+            }
+
+            window.scrollTo(0, document.body.scrollHeight);
+        };
+
+        input.addEventListener('keydown', async (e) => {
+            // TAB COMPLETION
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const currentText = input.value;
+                const res = await fetch('/complete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: currentText })
+                });
+                const data = await res.json();
+                const completions = data.completions;
+    
+                if (completions.length === 1) {
+                    // Single match → auto-complete
+                    const tokens = currentText.split(/\s+/);
+                    tokens[tokens.length - 1] = completions[0];
+                    input.value = tokens.join(' ') + (completions[0].endsWith('/') ? '' : ' ');
+                } else if (completions.length > 1) {
+                    // Multiple matches → display below
+                    terminal.innerHTML += `<pre>${completions.join('  ')}</pre>`;
+                    window.scrollTo(0, document.body.scrollHeight);
+                }
+            }
+            // HISTORY NAVIGATION
+            else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    input.value = history[historyIndex];
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (historyIndex < history.length - 1) {
+                    historyIndex++;
+                    input.value = history[historyIndex];
+                } else {
+                    historyIndex = history.length;
+                    input.value = '';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

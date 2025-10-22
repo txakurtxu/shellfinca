@@ -1,0 +1,5 @@
+# tar czvf decrypt.tar.gz ../../../2025/*
+# openssl enc -aes-256-cbc -salt -in decrypt.tar.gz -out encrypt.tar.gz
+
+openssl enc -d -aes-256-cbc -in encrypt.tar.gz -out decrypt.tar.gz -pass file:pwd
+tar xzvf decrypt.tar.gz
