@@ -9,6 +9,10 @@ app.secret_key = 'replace-this-with-a-secret'
 sandbox= "sandbox/"
 odir= ""
 
+@app.route('/restart', methods= ['GET'])
+def restart():
+    os._exit(0)
+
 @app.route('/complete', methods=['POST'])
 def complete():
     data = request.get_json()
@@ -47,6 +51,9 @@ def complete():
 
 @app.route('/edit/<path:filename>')
 def edit_file(filename):
+    cwd= os.getcwd()
+    if cwd== odir:
+        os.chdir(sandbox)
     filepath = os.path.join(os.getcwd(), filename)
     # print(f"Edit: {filepath= }")
     try:
@@ -59,6 +66,9 @@ def edit_file(filename):
 @app.route('/save/<path:filename>', methods=['POST'])
 def save_file(filename):
     content = request.form.get('content', '')
+    cwd= os.getcwd()
+    if cwd== odir:
+        os.chdir(sandbox)
     filepath = os.path.join(os.getcwd(), filename)
     try:
         with open(filepath, 'w', encoding='utf-8') as f:
